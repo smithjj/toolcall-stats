@@ -2,120 +2,79 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-function getDir() {
-  return path.join(os.homedir(), ".config", "input-token-counter");
+const DIR = path.join(os.homedir(), ".config", "input-token-counter");
+const SUMMARY = path.join(DIR, "summary.json");
+const METRICS = path.join(DIR, "metrics.jsonl");
+
+const pending = new Map();
+
+function ensure() {
+  if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
 }
 
-function getSummaryPath() {
-  return path.join(getDir(), "summary.json");
-}
-
-function getMetricsPath() {
-  return path.join(getDir(), "metrics.jsonl");
-}
-
-function ensureDir() {
-  const dir = getDir();
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
-
-function loadSummary() {
+function load() {
   try {
-    const p = getSummaryPath();
-    if (fs.existsSync(p)) {
-      return JSON.parse(fs.readFileSync(p, "utf-8"));
-    }
+    if (fs.existsSync(SUMMARY)) return JSON.parse(fs.readFileSync(SUMMARY, "utf-8"));
   } catch (_) {}
-  return {
-    totalCalls: 0,
-    totalDuration: 0,
-    totalErrors: 0,
-    totalArgsChars: 0,
-    totalResultChars: 0,
-    byTool: {},
-    firstCall: null,
-    lastCall: null,
-  };
+  return { totalCalls: 0, totalDuration: 0, totalErrors: 0, totalArgsChars: 0, totalResultChars: 0, byTool: {}, firstCall: null, lastCall: null };
 }
 
-function saveSummary(summary) {
-  ensureDir();
-  fs.writeFileSync(getSummaryPath(), JSON.stringify(summary, null, 2));
+function save(s) {
+  ensure();
+  fs.writeFileSync(SUMMARY, JSON.stringify(s, null, 2));
 }
 
-function recordCall(tool, duration, argsStr, resultStr, isError) {
-  ensureDir();
-  const entry = {
-    ts: new Date().toISOString(),
-    tool,
-    duration,
-    argsChars: argsStr.length,
-    resultChars: resultStr.length,
-    error: isError,
-  };
-  fs.appendFileSync(getMetricsPath(), JSON.stringify(entry) + "\n");
+function record(tool, dur, argsStr, resultStr, err) {
+  ensure();
+  const entry = { ts: new Date().toISOString(), tool, duration: dur, argsChars: argsStr.length, resultChars: resultStr.length, error: !!err };
+  fs.appendFileSync(METRICS, JSON.stringify(entry) + "\n");
 
-  const summary = loadSummary();
-  summary.totalCalls += 1;
-  summary.totalDuration += duration;
-  if (isError) summary.totalErrors += 1;
-  summary.totalArgsChars += argsStr.length;
-  summary.totalResultChars += resultStr.length;
-
-  if (!summary.byTool[tool]) {
-    summary.byTool[tool] = { calls: 0, errors: 0, totalDuration: 0, totalArgsChars: 0, totalResultChars: 0 };
-  }
-  summary.byTool[tool].calls += 1;
-  if (isError) summary.byTool[tool].errors += 1;
-  summary.byTool[tool].totalDuration += duration;
-  summary.byTool[tool].totalArgsChars += argsStr.length;
-  summary.byTool[tool].totalResultChars += resultStr.length;
-
-  if (!summary.firstCall) summary.firstCall = entry.ts;
-  summary.lastCall = entry.ts;
-
-  saveSummary(summary);
+  const s = load();
+  s.totalCalls++;
+  s.totalDuration += dur;
+  if (err) s.totalErrors++;
+  s.totalArgsChars += argsStr.length;
+  s.totalResultChars += resultStr.length;
+  if (!s.byTool[tool]) s.byTool[tool] = { calls: 0, errors: 0, totalDuration: 0, totalArgsChars: 0, totalResultChars: 0 };
+  s.byTool[tool].calls++;
+  if (err) s.byTool[tool].errors++;
+  s.byTool[tool].totalDuration += dur;
+  s.byTool[tool].totalArgsChars += argsStr.length;
+  s.byTool[tool].totalResultChars += resultStr.length;
+  if (!s.firstCall) s.firstCall = entry.ts;
+  s.lastCall = entry.ts;
+  save(s);
 }
 
-const pendingMap = new Map();
-
-export default async function plugin(opts) {
-  return {
-    name: "tool-profiler",
-    description: "Profiles tool calls - tracks duration, frequency, and errors",
-    hooks: {
-      "tool.execute.before": ({ tool, args, id }) => {
-        if (!tool) return;
-        const toolName = typeof tool === "string" ? tool : tool.name || "unknown";
-        const argsStr = JSON.stringify(args ?? {});
-        pendingMap.set(id, { toolName, start: Date.now(), argsStr });
-      },
-      "tool.execute.after": ({ tool, result, error, id }) => {
-        if (!id || !pendingMap.has(id)) return;
-        const start = pendingMap.get(id);
-        pendingMap.delete(id);
-        const duration = Date.now() - start.start;
-        const resultStr = result != null ? JSON.stringify(result).slice(0, 5000) : "";
-        const isError = !!(error);
-        recordCall(start.toolName, duration, start.argsStr, resultStr, isError);
-      },
+export default {
+  name: "tool-profiler",
+  version: "2.2.0",
+  description: "Profiles tool calls - tracks duration, frequency, and errors",
+  hooks: {
+    "tool.execute.before": (_input, output) => {
+      const tool = output.tool || _input.tool;
+      if (!tool) return;
+      const name = typeof tool === "string" ? tool : tool.name || "unknown";
+      const id = _input.id || output.id || `${name}-${Date.now()}`;
+      pending.set(id, { name, start: Date.now(), argsStr: JSON.stringify(output.args ?? _input.args ?? {}) });
     },
-  };
-}
+    "tool.execute.after": (_input, output) => {
+      const id = _input.id || output.id;
+      if (!id || !pending.has(id)) return;
+      const p = pending.get(id);
+      pending.delete(id);
+      const dur = Date.now() - p.start;
+      const res = output.result != null ? JSON.stringify(output.result).slice(0, 5000) : "";
+      record(p.name, dur, p.argsStr, res, !!output.error);
+    },
+  },
+};
 
 export function getSummary() {
-  return loadSummary();
+  return load();
 }
 
 export function reset() {
-  try {
-    fs.unlinkSync(getMetricsPath());
-  } catch (_) {}
-  saveSummary({
-    totalCalls: 0, totalDuration: 0, totalErrors: 0,
-    totalArgsChars: 0, totalResultChars: 0,
-    byTool: {}, firstCall: null, lastCall: null,
-  });
+  try { fs.unlinkSync(METRICS); } catch (_) {}
+  save({ totalCalls: 0, totalDuration: 0, totalErrors: 0, totalArgsChars: 0, totalResultChars: 0, byTool: {}, firstCall: null, lastCall: null });
 }
