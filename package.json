@@ -1,9 +1,7 @@
 {
-  "name": "input-token-counter",
-  "version": "2.0.0",
-  "description": "OpenCode plugin that profiles tool calls — tracks duration, frequency, size, and errors",
+  "name": "tool-profiler",
+  "version": "2.1.0",
+  "description": "OpenCode plugin that profiles tool calls - tracks duration, frequency, size, and errors",
   "type": "module",
-  "main": "index.js",
-  "author": "",
-  "license": "MIT"
+  "main": "index.js"
 }
