@@ -1,4 +1,4 @@
-﻿# Input Token Counter / Tool Call Profiler
+# toolcall-stats
 
 An OpenCode plugin that profiles tool calls â€” tracking duration, frequency, argument/result sizes, and error rates.
 

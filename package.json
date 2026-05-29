@@ -5,16 +5,22 @@
   "type": "module",
   "main": "index.js",
   "bin": {
-    "tc-stats": "./cli.js",
-    "tc-report": "./report.cjs",
-    "tc-viz": "./visualize.cjs"
+    "tc-stats": "cli.js",
+    "tc-report": "report.cjs",
+    "tc-viz": "visualize.cjs"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/smithjj/toolcall-stats.git"
   },
   "homepage": "https://github.com/smithjj/toolcall-stats",
-  "keywords": ["opencode", "plugin", "tool", "profiler", "dashboard"],
+  "keywords": [
+    "opencode",
+    "plugin",
+    "tool",
+    "profiler",
+    "dashboard"
+  ],
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^12.10.0",
