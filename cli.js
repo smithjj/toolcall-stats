@@ -3,8 +3,8 @@ import path from "node:path";
 import os from "node:os";
 
 const METRICS_DIR = path.join(os.homedir(), ".config", "input-token-counter");
-const METRICS_FILE = path.join(METRICS_DIR, "metrics.jsonl");
 const SUMMARY_FILE = path.join(METRICS_DIR, "summary.json");
+const METRICS_FILE = path.join(METRICS_DIR, "metrics.jsonl");
 
 function formatNumber(n) {
   return n.toLocaleString();
@@ -24,81 +24,84 @@ function printSummary() {
   let data;
   try {
     if (!fs.existsSync(SUMMARY_FILE)) {
-      console.log("No input-token-counter data found yet.");
-      console.log("Make some tool calls first, then run this again.\n");
+      console.log("No data yet. Tool calls will be tracked automatically.");
       return;
     }
     data = JSON.parse(fs.readFileSync(SUMMARY_FILE, "utf-8"));
     if (!data || !data.totalCalls) {
-      console.log("No tool calls recorded yet. Start using OpenCode and this will track automatically.\n");
+      console.log("No tool calls recorded yet. Start using OpenCode and this will track automatically.");
       return;
     }
   } catch {
-    console.log("No data yet.\n");
+    console.log("No data yet.");
     return;
   }
 
   const avgDuration = data.totalCalls > 0 ? data.totalDuration / data.totalCalls : 0;
 
   console.log(hr());
-  console.log("              Tool Call Profiler — Summary");
+  console.log("              Tool Call Profiler -- Summary");
   console.log(hr());
-  console.log(`  Tool calls:         ${formatNumber(data.totalCalls)}`);
-  console.log(`  Errors:             ${formatNumber(data.totalErrors)} (${data.totalCalls > 0 ? ((data.totalErrors / data.totalCalls) * 100).toFixed(1) : 0}%)`);
-  console.log(`  Total duration:     ${formatDuration(data.totalDuration)}`);
-  console.log(`  Avg duration:       ${formatDuration(avgDuration)}`);
-  console.log(`  Total args size:    ${formatNumber(data.totalArgsChars)} chars`);
-  console.log(`  Total result size:  ${formatNumber(data.totalResultChars)} chars`);
-  if (data.firstCall) console.log(`  First call:         ${data.firstCall.replace("T", " ").split(".")[0]}`);
-  if (data.lastCall) console.log(`  Last call:          ${data.lastCall.replace("T", " ").split(".")[0]}`);
+  console.log("  Tool calls:         " + formatNumber(data.totalCalls));
+  console.log("  Errors:             " + formatNumber(data.totalErrors) + " (" + (data.totalCalls > 0 ? ((data.totalErrors / data.totalCalls) * 100).toFixed(1) : 0) + "%)");
+  console.log("  Total duration:     " + formatDuration(data.totalDuration));
+  console.log("  Avg duration:       " + formatDuration(avgDuration));
+  console.log("  Total args size:    " + formatNumber(data.totalArgsChars) + " chars");
+  console.log("  Total result size:  " + formatNumber(data.totalResultChars) + " chars");
+  if (data.firstCall) console.log("  First call:         " + data.firstCall.replace("T", " ").split(".")[0]);
+  if (data.lastCall) console.log("  Last call:          " + data.lastCall.replace("T", " ").split(".")[0]);
   console.log(hr());
 
   const tools = Object.entries(data.byTool || {}).sort((a, b) => b[1].calls - a[1].calls);
   if (tools.length) {
-    console.log("\n  Calls by tool:");
-    console.log(`  ${"Tool".padEnd(22)} ${"Calls".padStart(7)} ${"Errors".padStart(7)} ${"Avg Time".padStart(10)} ${"Total Time".padStart(12)}`);
-    console.log(`  ${"".padEnd(22)} ${"".padStart(7)} ${"".padStart(7)} ${"".padStart(10)} ${"".padStart(12)}`);
+    console.log("");
+    console.log("  Calls by tool:");
+    console.log("  Tool                   Calls   Errors    Avg Time   Total Time");
+    console.log("  ----                   -----   ------    --------   ----------");
     for (const [tool, stats] of tools) {
       const avg = stats.calls > 0 ? stats.totalDuration / stats.calls : 0;
-      const name = tool.length > 20 ? tool.slice(0, 19) + "…" : tool;
-      console.log(`  ${name.padEnd(22)} ${String(stats.calls).padStart(7)} ${String(stats.errors).padStart(7)} ${formatDuration(avg).padStart(10)} ${formatDuration(stats.totalDuration).padStart(12)}`);
+      const name = tool.length > 22 ? tool.slice(0, 21) + "\u2026" : tool;
+      console.log("  " + name.padEnd(23) + String(stats.calls).padStart(7) + " " + String(stats.errors).padStart(7) + "   " + formatDuration(avg).padStart(8) + "  " + formatDuration(stats.totalDuration).padStart(10));
     }
     console.log(hr());
   }
 }
 
-function printRecent(n = 10) {
+function printRecent(n) {
   if (!fs.existsSync(METRICS_FILE)) {
     console.log("No metrics data yet.");
     return;
   }
+  n = n || 10;
   const lines = fs.readFileSync(METRICS_FILE, "utf-8").trim().split("\n").filter(Boolean);
   if (!lines.length) {
     console.log("No calls recorded yet.");
     return;
   }
 
-  const entries = lines.map(l => JSON.parse(l)).slice(-n).reverse();
-  console.log(`\n  Last ${entries.length} tool calls:`);
-  console.log(`  ${"Time".padEnd(21)} ${"Tool".padEnd(22)} ${"Duration".padStart(10)} ${"Error".padStart(6)}`);
-  console.log(`  ${"".padEnd(21)} ${"".padEnd(22)} ${"".padStart(10)} ${"".padStart(6)}`);
-  for (const e of entries) {
-    const ts = e.ts.replace("T", " ").split(".")[0];
-    const name = e.tool.length > 20 ? e.tool.slice(0, 19) + "…" : e.tool;
-    const dur = formatDuration(e.duration);
-    const err = e.error ? "ERR" : "ok";
-    console.log(`  ${ts.padEnd(21)} ${name.padEnd(22)} ${dur.padStart(10)} ${err.padStart(6)}`);
+  const entries = lines.map(function (l) { return JSON.parse(l); }).slice(-n).reverse();
+  console.log("");
+  console.log("  Last " + entries.length + " tool calls:");
+  console.log("  Time                 Tool                   Duration   Error");
+  console.log("  ----                 ----                   --------   -----");
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i];
+    var ts = e.ts.replace("T", " ").split(".")[0];
+    var name = e.tool.length > 22 ? e.tool.slice(0, 21) + "\u2026" : e.tool;
+    var dur = formatDuration(e.duration);
+    var err = e.error ? "ERR" : "ok";
+    console.log("  " + ts.padEnd(21) + " " + name.padEnd(23) + dur.padStart(8) + "  " + err.padStart(5));
   }
-  console.log();
+  console.log("");
 }
 
-const cmd = process.argv[2] || "";
+var cmd = process.argv[2] || "";
 
 if (cmd === "--reset" || cmd === "-r") {
   try {
     if (fs.existsSync(METRICS_FILE)) fs.unlinkSync(METRICS_FILE);
-  } catch {}
-  const empty = {
+  } catch (e) {}
+  var empty = {
     totalCalls: 0,
     totalDuration: 0,
     totalErrors: 0,
@@ -108,17 +111,19 @@ if (cmd === "--reset" || cmd === "-r") {
     firstCall: null,
     lastCall: null,
   };
-  fs.writeFileSync(SUMMARY_FILE, JSON.stringify(empty, null, 2));
-  console.log("Reset input-token-counter data.");
+  try {
+    fs.writeFileSync(SUMMARY_FILE, JSON.stringify(empty, null, 2));
+  } catch (e) {}
+  console.log("Reset tool profiler data.");
 } else if (cmd === "--json" || cmd === "-j") {
   try {
-    const data = JSON.parse(fs.readFileSync(SUMMARY_FILE, "utf-8"));
+    var data = JSON.parse(fs.readFileSync(SUMMARY_FILE, "utf-8"));
     console.log(JSON.stringify(data, null, 2));
-  } catch {
+  } catch (e) {
     console.log(JSON.stringify({ error: "No data yet" }));
   }
 } else if (cmd === "--help" || cmd === "-h") {
-  console.log("Usage: input-token-counter [options]");
+  console.log("Usage: tool-profiler [options]");
   console.log("  (no args)      Show summary table");
   console.log("  --recent, -n   Show summary + recent calls");
   console.log("  --json, -j     Show raw JSON summary");
