@@ -1,94 +1,107 @@
-# Input Token Counter Plugin
+# Input Token Counter / Tool Call Profiler
 
-A plugin for OpenCode that tracks input token usage across LLM conversations.
+An OpenCode plugin that profiles tool calls — tracking duration, frequency, argument/result sizes, and error rates.
 
 ## Features
 
-- Automatic token counting for all chat requests
-- Persistent metrics storage in JSONL format
-- Summary statistics by model and provider
-- CLI tool for viewing usage data
-- Cost estimation based on token counts
+- Tracks every tool call OpenCode makes (bash, read, write, grep, glob, etc.)
+- Records duration, argument size, result size, and error status
+- Per-tool breakdown: calls, errors, average time, total time
+- Persistent JSONL metrics and summary JSON
+- CLI tool for viewing stats
+- Zero dependencies
+
+## How It Works
+
+The plugin hooks into OpenCode's supported hooks:
+
+- `tool.execute.before` — captures start time, tool name, and arguments
+- `tool.execute.after` — computes duration, result size, error status, appends to metrics
+
+Data is stored in `~/.config/input-token-counter/`:
+- `metrics.jsonl` — one JSON entry per tool call
+- `summary.json` — aggregated stats
 
 ## Installation
 
-Place this plugin in your OpenCode plugins directory:
+Place in your OpenCode plugins directory:
 ```
 ~/.config/opencode/plugins/input-token-counter/
 ```
 
-Install dependencies:
-```bash
-npm install
-```
+No npm dependencies required.
 
 ## Usage
 
-### Automatic Tracking
+### CLI
 
-Once installed, the plugin automatically tracks all chat requests.
-
-### CLI Tool
-
-View your token usage:
 ```bash
 node ~/.config/opencode/plugins/input-token-counter/cli.js
 ```
 
 Options:
-- `--recent` - Show recent calls
-- `--json` - Output raw JSON
-- `--reset` - Clear all statistics
+- `--recent` / `-n` — show summary plus last 10 calls
+- `--json` / `-j` — output raw summary JSON
+- `--reset` — clear all data
 
-## Current Status
+### Example Output
 
-**This plugin does not currently work** due to OpenCode's plugin system not supporting the required `chat.params` hook.
+```
+----------------------------------------------------------------------
+              Tool Call Profiler — Summary
+----------------------------------------------------------------------
+  Tool calls:         1,247
+  Errors:             23 (1.8%)
+  Total duration:     5.2m
+  Avg duration:       251ms
+  Total args size:    2,458,921 chars
+  Total result size:  8,234,561 chars
+  First call:         2026-05-28 14:23:11
+  Last call:          2026-05-28 16:45:02
+----------------------------------------------------------------------
 
-### Investigation
+  Calls by tool:
+  Tool                  Calls  Errors    Avg Time   Total Time
+  
+  bash                    423       2       180ms        1.3m
+  read                    389       0        45ms       17.5s
+  grep                    201       5        12ms        2.4s
+  glob                    124       1         8ms        1.0s
+  write                    65       3        95ms        6.2s
+  edit                     45      12       320ms       14.4s
+----------------------------------------------------------------------
+```
 
-During testing, we discovered:
+## Metrics Format
 
-1. **Plugin loads successfully** - The module exports correctly and OpenCode recognizes it
-2. **Hook never fires** - The `chat.params` hook is never invoked despite being registered
-3. **Root cause** - OpenCode's plugin API only supports limited hooks (tool.execute, session, config) and does not include chat/message interception hooks
+**metrics.jsonl** (one per line):
+```json
+{"ts":"2026-05-28T16:45:02.000Z","tool":"bash","duration":182,"argsChars":1423,"resultChars":8921,"error":false}
+```
 
-### What We Tried
+**summary.json**:
+```json
+{
+  "totalCalls": 1247,
+  "totalDuration": 312000,
+  "totalErrors": 23,
+  "totalArgsChars": 2458921,
+  "totalResultChars": 8234561,
+  "byTool": {
+    "bash": { "calls": 423, "errors": 2, "totalDuration": 78000, "totalArgsChars": 890000, "totalResultChars": 3400000 },
+    "read": { "calls": 389, "errors": 0, "totalDuration": 17500, "totalArgsChars": 450000, "totalResultChars": 2100000 }
+  },
+  "firstCall": "2026-05-28T14:23:11.000Z",
+  "lastCall": "2026-05-28T16:45:02.000Z"
+}
+```
 
-- Verified ESM exports and hook signatures
-- Tested CJS and ESM module loading
-- Checked plugin loading mechanism
-- Reviewed OpenCode documentation
+## Analysis Examples
 
-### Required Hooks
+```bash
+# Longest-running tool calls
+cat ~/.config/input-token-counter/metrics.jsonl | jq -s 'sort_by(-.duration) | .[0:5]'
 
-This plugin needs hooks like:
-- `chat.params` - Intercept chat parameters before sending
-- `chat.response` - Access chat responses
-- `message.create` - Hook into message creation
-
-These hooks are not yet available in OpenCode as of May 2026.
-
-## Technical Details
-
-### Architecture
-
-- `index.js` - Main plugin with hook registration
-- `cli.js` - CLI tool for viewing stats
-- `package.json` - Dependencies (tiktoken)
-
-### Token Counting
-
-Uses tiktoken for accurate counting:
-- OpenAI models: `cl100k_base` encoding
-- Claude models: `cl100k_base` approximation
-- Other models: Character-based estimation
-
-### Data Storage
-
-Metrics stored in:
-- `~/.config/input-token-counter/summary.json`
-- `~/.config/input-token-counter/metrics.jsonl`
-
-## Future Outlook
-
-This plugin is ready to work once OpenCode adds chat/message hooks. The architecture is sound and will provide valuable token usage insights when the required hooks become available.
+# Error rate by tool
+cat ~/.config/input-token-counter/metrics.jsonl | jq -s 'group_by(.tool) | map({tool: .[0].tool, errors: map(select(.error)) | length, calls: length}) | sort_by(-.errors)'
+```

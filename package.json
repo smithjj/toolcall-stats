@@ -1,13 +1,9 @@
 {
-  "type": "module",
   "name": "input-token-counter",
-  "version": "1.0.0",
-  "description": "Tracks input/prompt tokens sent to LLM APIs using tiktoken",
+  "version": "2.0.0",
+  "description": "OpenCode plugin that profiles tool calls — tracks duration, frequency, size, and errors",
+  "type": "module",
   "main": "index.js",
-  "bin": {
-    "input-token-counter": "./cli.js"
-  },
-  "dependencies": {
-    "tiktoken": "^1.0.22"
-  }
+  "author": "",
+  "license": "MIT"
 }

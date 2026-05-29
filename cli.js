@@ -2,98 +2,113 @@
 import path from "node:path";
 import os from "node:os";
 
-const SUMMARY_FILE = path.join(os.homedir(), ".config", "input-token-counter", "summary.json");
 const METRICS_DIR = path.join(os.homedir(), ".config", "input-token-counter");
 const METRICS_FILE = path.join(METRICS_DIR, "metrics.jsonl");
+const SUMMARY_FILE = path.join(METRICS_DIR, "summary.json");
 
 function formatNumber(n) {
   return n.toLocaleString();
 }
 
+function formatDuration(ms) {
+  if (ms < 1000) return Math.round(ms) + "ms";
+  if (ms < 60000) return (ms / 1000).toFixed(1) + "s";
+  return (ms / 60000).toFixed(1) + "m";
+}
+
+function hr() {
+  return "-".repeat(70);
+}
+
 function printSummary() {
-  let summary;
+  let data;
   try {
     if (!fs.existsSync(SUMMARY_FILE)) {
       console.log("No input-token-counter data found yet.");
-      console.log("Make a few chat requests first, then run this again.\n");
+      console.log("Make some tool calls first, then run this again.\n");
       return;
     }
-    summary = JSON.parse(fs.readFileSync(SUMMARY_FILE, "utf-8"));
-  } catch (err) {
-    console.error("Error reading summary:", err.message);
-    process.exit(1);
-  }
-
-  console.log("\n=== Input Token Counter ===\n");
-  console.log("  Total calls:     " + formatNumber(summary.totalCalls));
-  console.log("  Total tokens:    " + formatNumber(summary.totalTokens));
-  console.log("  Total chars:     " + formatNumber(summary.totalCharacters));
-  console.log("  Avg tokens/call: " + formatNumber(summary.totalCalls > 0 ? Math.round(summary.totalTokens / summary.totalCalls) : 0));
-  
-  if (summary.firstCall) {
-    console.log("  First call:      " + new Date(summary.firstCall).toLocaleString());
-    console.log("  Last call:       " + new Date(summary.lastCall).toLocaleString());
-  }
-  
-  console.log("");
-
-  if (Object.keys(summary.byModel).length > 0) {
-    console.log("  By Model:");
-    const sortedModels = Object.entries(summary.byModel).sort((a, b) => b[1].tokens - a[1].tokens);
-    for (const [model, data] of sortedModels) {
-      console.log("    " + model.padEnd(40) + " calls: " + String(data.calls).padEnd(4) + " tokens: " + formatNumber(data.tokens));
+    data = JSON.parse(fs.readFileSync(SUMMARY_FILE, "utf-8"));
+    if (!data || !data.totalCalls) {
+      console.log("No tool calls recorded yet. Start using OpenCode and this will track automatically.\n");
+      return;
     }
-    console.log("");
-  }
-
-  if (Object.keys(summary.byProvider).length > 0) {
-    console.log("  By Provider:");
-    const sortedProviders = Object.entries(summary.byProvider).sort((a, b) => b[1].tokens - a[1].tokens);
-    for (const [provider, data] of sortedProviders) {
-      console.log("    " + provider.padEnd(20) + " calls: " + String(data.calls).padEnd(4) + " tokens: " + formatNumber(data.tokens));
-    }
-    console.log("");
-  }
-
-  if (summary.totalTokens > 0) {
-    const costEstimate = (summary.totalTokens / 1000000) * 3;
-    console.log("  Est. cost (GPT-4 @ /M): $" + costEstimate.toFixed(2));
-    console.log("  Est. cost (Claude 3.5 @ /M): $" + costEstimate.toFixed(2));
-    console.log("");
-  }
-}
-
-function printRecent() {
-  if (!fs.existsSync(METRICS_FILE)) {
-    console.log("No metrics file found.");
+  } catch {
+    console.log("No data yet.\n");
     return;
   }
-  
-  const lines = fs.readFileSync(METRICS_FILE, "utf-8").trim().split("\n").filter(Boolean);
-  const recent = lines.slice(-10);
-  
-  console.log("  Recent calls (last " + recent.length + "):");
-  for (const line of recent) {
-    try {
-      const entry = JSON.parse(line);
-      const time = new Date(entry.ts).toLocaleTimeString();
-      if (entry.error) {
-        console.log("    [" + time + "] ERROR: " + entry.error);
-      } else {
-        console.log("    [" + time + "] " + (entry.model || "?").padEnd(35) + " " + String(entry.inputTokens).padEnd(6) + " tokens  " + String(entry.messageCount) + " msgs" + (entry.toolCount ? " " + entry.toolCount + " tools" : ""));
-      }
-    } catch {}
+
+  const avgDuration = data.totalCalls > 0 ? data.totalDuration / data.totalCalls : 0;
+
+  console.log(hr());
+  console.log("              Tool Call Profiler — Summary");
+  console.log(hr());
+  console.log(`  Tool calls:         ${formatNumber(data.totalCalls)}`);
+  console.log(`  Errors:             ${formatNumber(data.totalErrors)} (${data.totalCalls > 0 ? ((data.totalErrors / data.totalCalls) * 100).toFixed(1) : 0}%)`);
+  console.log(`  Total duration:     ${formatDuration(data.totalDuration)}`);
+  console.log(`  Avg duration:       ${formatDuration(avgDuration)}`);
+  console.log(`  Total args size:    ${formatNumber(data.totalArgsChars)} chars`);
+  console.log(`  Total result size:  ${formatNumber(data.totalResultChars)} chars`);
+  if (data.firstCall) console.log(`  First call:         ${data.firstCall.replace("T", " ").split(".")[0]}`);
+  if (data.lastCall) console.log(`  Last call:          ${data.lastCall.replace("T", " ").split(".")[0]}`);
+  console.log(hr());
+
+  const tools = Object.entries(data.byTool || {}).sort((a, b) => b[1].calls - a[1].calls);
+  if (tools.length) {
+    console.log("\n  Calls by tool:");
+    console.log(`  ${"Tool".padEnd(22)} ${"Calls".padStart(7)} ${"Errors".padStart(7)} ${"Avg Time".padStart(10)} ${"Total Time".padStart(12)}`);
+    console.log(`  ${"".padEnd(22)} ${"".padStart(7)} ${"".padStart(7)} ${"".padStart(10)} ${"".padStart(12)}`);
+    for (const [tool, stats] of tools) {
+      const avg = stats.calls > 0 ? stats.totalDuration / stats.calls : 0;
+      const name = tool.length > 20 ? tool.slice(0, 19) + "…" : tool;
+      console.log(`  ${name.padEnd(22)} ${String(stats.calls).padStart(7)} ${String(stats.errors).padStart(7)} ${formatDuration(avg).padStart(10)} ${formatDuration(stats.totalDuration).padStart(12)}`);
+    }
+    console.log(hr());
   }
-  console.log("");
 }
 
-const cmd = process.argv[2];
-if (cmd === "--recent" || cmd === "-r") {
-  printSummary();
-  printRecent();
-} else if (cmd === "--reset") {
-  fs.writeFileSync(SUMMARY_FILE, JSON.stringify({ totalTokens: 0, totalCalls: 0, totalCharacters: 0, byModel: {}, byProvider: {}, firstCall: null, lastCall: null }, null, 2));
-  fs.writeFileSync(METRICS_FILE, "", "utf-8");
+function printRecent(n = 10) {
+  if (!fs.existsSync(METRICS_FILE)) {
+    console.log("No metrics data yet.");
+    return;
+  }
+  const lines = fs.readFileSync(METRICS_FILE, "utf-8").trim().split("\n").filter(Boolean);
+  if (!lines.length) {
+    console.log("No calls recorded yet.");
+    return;
+  }
+
+  const entries = lines.map(l => JSON.parse(l)).slice(-n).reverse();
+  console.log(`\n  Last ${entries.length} tool calls:`);
+  console.log(`  ${"Time".padEnd(21)} ${"Tool".padEnd(22)} ${"Duration".padStart(10)} ${"Error".padStart(6)}`);
+  console.log(`  ${"".padEnd(21)} ${"".padEnd(22)} ${"".padStart(10)} ${"".padStart(6)}`);
+  for (const e of entries) {
+    const ts = e.ts.replace("T", " ").split(".")[0];
+    const name = e.tool.length > 20 ? e.tool.slice(0, 19) + "…" : e.tool;
+    const dur = formatDuration(e.duration);
+    const err = e.error ? "ERR" : "ok";
+    console.log(`  ${ts.padEnd(21)} ${name.padEnd(22)} ${dur.padStart(10)} ${err.padStart(6)}`);
+  }
+  console.log();
+}
+
+const cmd = process.argv[2] || "";
+
+if (cmd === "--reset" || cmd === "-r") {
+  try {
+    if (fs.existsSync(METRICS_FILE)) fs.unlinkSync(METRICS_FILE);
+  } catch {}
+  const empty = {
+    totalCalls: 0,
+    totalDuration: 0,
+    totalErrors: 0,
+    totalArgsChars: 0,
+    totalResultChars: 0,
+    byTool: {},
+    firstCall: null,
+    lastCall: null,
+  };
+  fs.writeFileSync(SUMMARY_FILE, JSON.stringify(empty, null, 2));
   console.log("Reset input-token-counter data.");
 } else if (cmd === "--json" || cmd === "-j") {
   try {
@@ -104,11 +119,14 @@ if (cmd === "--recent" || cmd === "-r") {
   }
 } else if (cmd === "--help" || cmd === "-h") {
   console.log("Usage: input-token-counter [options]");
-  console.log("  (no args)     Show summary table");
-  console.log("  --recent, -r  Show summary + recent calls");
-  console.log("  --json, -j    Show raw JSON summary");
-  console.log("  --reset       Reset all data");
-  console.log("  --help, -h    Show this help");
+  console.log("  (no args)      Show summary table");
+  console.log("  --recent, -n   Show summary + recent calls");
+  console.log("  --json, -j     Show raw JSON summary");
+  console.log("  --reset        Reset all statistics");
+  console.log("  --help, -h     Show this help");
+} else if (cmd === "--recent" || cmd === "-n") {
+  printSummary();
+  printRecent(10);
 } else {
   printSummary();
 }
