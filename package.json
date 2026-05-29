@@ -5,6 +5,10 @@
   "type": "module",
   "main": "index.js",
   "bin": {
-    "tool-profiler": "./cli.js"
+    "tool-profiler": "./cli.js",
+    "tool-report": "./report.cjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0"
   }
 }
