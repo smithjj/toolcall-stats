@@ -5,7 +5,6 @@ import os from "node:os";
 const DIR = path.join(os.homedir(), ".config", "input-token-counter");
 const SUMMARY = path.join(DIR, "summary.json");
 const METRICS = path.join(DIR, "metrics.jsonl");
-
 const pending = new Map();
 
 function ensure() {
@@ -70,13 +69,4 @@ export default async function(_opts) {
       });
     },
   };
-}
-
-export function getSummary() {
-  return load();
-}
-
-export function reset() {
-  try { fs.unlinkSync(METRICS); } catch (_) {}
-  save({ totalCalls: 0, totalDuration: 0, totalErrors: 0, totalArgsChars: 0, totalResultChars: 0, byTool: {}, firstCall: null, lastCall: null });
 }
