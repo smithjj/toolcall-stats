@@ -51,8 +51,9 @@ try {
     process.exit(0);
   }
 
-  var sqlBT = 'SELECT tool, COUNT(*) AS c, AVG(duration_ms) AS ad, MAX(duration_ms) AS mx FROM calls GROUP BY tool ORDER BY c DESC';
+  var sqlBT = 'SELECT tool, COUNT(*) AS c, AVG(duration_ms) AS ad, MAX(duration_ms) AS mx, SUM(error) AS errs FROM calls GROUP BY tool ORDER BY c DESC';
   var byTool = db.prepare(sqlBT).all();
+  var totalErrors = byTool.reduce(function(s, t) { return s + t.errs; }, 0);
 
   var sqlBH = 'SELECT substr(ts,1,13) AS h, COUNT(*) AS c FROM calls GROUP BY h ORDER BY h';
   var byHour = db.prepare(sqlBH).all();
@@ -142,6 +143,7 @@ try {
     '<div class=header><h1>Tool Call Dashboard</h1><span>' + DB_PATH + '</span></div>',
     '<div class=stats>',
     sc('Total Calls', totalCalls.toLocaleString()),
+    sc('Error Rate', (totalErrors / totalCalls * 100).toFixed(1) + '%'),
     sc('Unique Tools', String(uniqueTools)),
     sc('Total Duration', durLabel(totalDur)),
     sc('Avg Duration', durLabel(avgDur)),
