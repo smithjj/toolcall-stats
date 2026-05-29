@@ -6,6 +6,7 @@ import os from "node:os";
 const METRICS_DIR = path.join(os.homedir(), ".config", "toolcall-stats");
 const SUMMARY_FILE = path.join(METRICS_DIR, "summary.json");
 const METRICS_FILE = path.join(METRICS_DIR, "metrics.jsonl");
+const DB_FILE = path.join(METRICS_DIR, "report.db");
 
 function formatNumber(n) {
   return n.toLocaleString();
@@ -192,9 +193,10 @@ function printRecent(n) {
 var cmd = process.argv[2] || "";
 
 if (cmd === "--reset" || cmd === "-r") {
-  try {
-    if (fs.existsSync(METRICS_FILE)) fs.unlinkSync(METRICS_FILE);
-  } catch (e) {}
+  try { if (fs.existsSync(METRICS_FILE)) fs.unlinkSync(METRICS_FILE); } catch (e) {}
+  try { if (fs.existsSync(DB_FILE)) fs.unlinkSync(DB_FILE); } catch (e) {}
+  try { if (fs.existsSync(DB_FILE + "-wal")) fs.unlinkSync(DB_FILE + "-wal"); } catch (e) {}
+  try { if (fs.existsSync(DB_FILE + "-shm")) fs.unlinkSync(DB_FILE + "-shm"); } catch (e) {}
   var empty = {
     totalCalls: 0,
     totalDuration: 0,
@@ -208,7 +210,7 @@ if (cmd === "--reset" || cmd === "-r") {
   try {
     fs.writeFileSync(SUMMARY_FILE, JSON.stringify(empty, null, 2));
   } catch (e) {}
-  console.log("Reset tool profiler data.");
+  console.log("Reset toolcall-stats data.");
 } else if (cmd === "--json" || cmd === "-j") {
   try {
     var data = JSON.parse(fs.readFileSync(SUMMARY_FILE, "utf-8"));
@@ -220,12 +222,12 @@ if (cmd === "--reset" || cmd === "-r") {
   printSummary();
   printStats();
 } else if (cmd === "--help" || cmd === "-h") {
-  console.log("Usage: tool-profiler [options]");
+  console.log("Usage: tc-stats [options]");
   console.log("  (no args)      Show summary table");
   console.log("  --recent, -n   Show summary + recent calls");
   console.log("  --stats, -s    Show summary + advanced stats (percentiles, median, stddev, slowest)");
   console.log("  --json, -j     Show raw JSON summary");
-  console.log("  --reset        Reset all statistics");
+  console.log("  --reset        Clear all data (JSONL + SQLite)");
   console.log("  --help, -h     Show this help");
 } else if (cmd === "--recent" || cmd === "-n") {
   printSummary();
