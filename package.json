@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "name": "input-token-counter",
+  "version": "1.0.0",
+  "description": "Tracks input/prompt tokens sent to LLM APIs using tiktoken",
+  "main": "index.js",
+  "bin": {
+    "input-token-counter": "./cli.js"
+  },
+  "dependencies": {
+    "tiktoken": "^1.0.22"
+  }
+}
