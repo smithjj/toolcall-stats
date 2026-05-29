@@ -1,6 +1,6 @@
 # toolcall-stats
 
-An OpenCode plugin that profiles tool calls â€” tracking duration, frequency, argument/result sizes, and error rates.
+An OpenCode plugin that profiles tool calls - tracking duration, frequency, argument/result sizes, and error rates.
 
 ## Features
 
@@ -15,61 +15,56 @@ An OpenCode plugin that profiles tool calls â€” tracking duration, frequenc
 
 The plugin hooks into OpenCode's supported hooks:
 
-- `tool.execute.before` â€” captures start time, tool name, and arguments
-- `tool.execute.after` â€” computes duration, result size, error status, appends to metrics
+- `tool.execute.before` - captures start time, tool name, and arguments
+- `tool.execute.after` - computes duration, result size, error status, appends to metrics
 
 Data is stored in `~/.config/toolcall-stats/`:
-- `metrics.jsonl` â€” one JSON entry per tool call
-- `summary.json` â€” aggregated stats
+- `metrics.jsonl` - one JSON entry per tool call
+- `summary.json` - aggregated stats
 
 ## Installation
 
-Place in your OpenCode plugins directory:
-```
-~/.config/opencode/plugins/toolcall-stats/
+Global CLI commands:
+```bash
+npm install -g toolcall-stats
 ```
 
-No npm dependencies required.
+OpenCode plugin: add to your opencode.json:
+```json
+{
+  "plugin": ["toolcall-stats"]
+}
+```
 
 ## Usage
 
 ### CLI
 
-```bash
-node ~/.config/opencode/plugins/toolcall-stats/cli.js
-```
-
-Options:
-- `--recent` / `-n` â€” show summary plus last 10 calls
-- `--json` / `-j` â€” output raw summary JSON
-- `--reset` â€” clear all data
+- `tc-stats` - Show summary table
+- `tc-stats --recent` - Show recent calls
+- `tc-stats --stats` - Show advanced stats (percentiles, median, stddev, slowest)
+- `tc-stats --json` - Output raw JSON
+- `tc-stats --reset` - Clear all data
+- `tc-report` - Detailed terminal report
+- `tc-viz` - Generate HTML dashboard
 
 ### Example Output
 
 ```
-----------------------------------------------------------------------
-              Tool Call Profiler â€” Summary
-----------------------------------------------------------------------
+Tool Call Profiler - Summary
+
   Tool calls:         1,247
   Errors:             23 (1.8%)
   Total duration:     5.2m
   Avg duration:       251ms
   Total args size:    2,458,921 chars
   Total result size:  8,234,561 chars
-  First call:         2026-05-28 14:23:11
-  Last call:          2026-05-28 16:45:02
-----------------------------------------------------------------------
 
   Calls by tool:
   Tool                  Calls  Errors    Avg Time   Total Time
-  
   bash                    423       2       180ms        1.3m
   read                    389       0        45ms       17.5s
   grep                    201       5        12ms        2.4s
-  glob                    124       1         8ms        1.0s
-  write                    65       3        95ms        6.2s
-  edit                     45      12       320ms       14.4s
-----------------------------------------------------------------------
 ```
 
 ## Metrics Format
