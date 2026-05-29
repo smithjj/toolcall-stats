@@ -1,13 +1,13 @@
 {
-  "name": "tool-profiler",
-  "version": "2.1.0",
-  "description": "OpenCode plugin that profiles tool calls - tracks duration, frequency, size, and errors",
+  "name": "toolcall-stats",
+  "version": "3.0.0",
+  "description": "OpenCode plugin that profiles tool calls - tracks duration, frequency, errors, and visualizes stats",
   "type": "module",
   "main": "index.js",
   "bin": {
-    "tool-profiler": "./cli.js",
-    "tool-report": "./report.cjs",
-    "tool-visualize": "./visualize.cjs"
+    "tc-stats": "./cli.js",
+    "tc-report": "./report.cjs",
+    "tc-viz": "./visualize.cjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.10.0",
