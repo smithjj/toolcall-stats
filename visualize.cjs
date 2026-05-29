@@ -73,7 +73,7 @@ try {
   for (var b = 0; b < 20; b++) {
     var lo = mn + b * bw, hi = mn + (b+1) * bw;
     hB[b] = 0;
-    hL[b] = durLabel(lo) + '-' + durLabel(hi);
+    hL[b] = Math.round((lo + hi) / 2);
   }
   for (var i = 0; i < durs.length; i++) {
     var idx = Math.min(19, Math.floor((durs[i] - mn) / bw));
@@ -135,7 +135,7 @@ try {
     '<meta charset=UTF-8>',
     "<meta name=viewport content='width=device-width,initial-scale=1'>",
     '<title>Tool Call Dashboard</title>',
-    '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\\/script>',
+    '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>',
     '<style>' + css + '</style>',
     '</head>',
     '<body>',
@@ -175,7 +175,7 @@ try {
   H.push('new Chart(c3.getContext("2d"),{type:"doughnut",data:{labels:' + CT + ',datasets:[{data:' + CC + ',backgroundColor:C}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"#8b949e",padding:12}}}}});');
 
   // c4 - Duration Histogram (bar, 20 buckets)
-  H.push('new Chart(c4.getContext("2d"),{type:"bar",data:{labels:' + HL + ',datasets:[{label:"Count",data:' + HV + ',backgroundColor:"#3fb950"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:"#21262d"}},x:{grid:{color:"#21262d"}}}}});');
+  H.push('new Chart(c4.getContext("2d"),{type:"bar",data:{labels:' + HL + ',datasets:[{label:"Count",data:' + HV + ',backgroundColor:"#3fb950"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{type:"logarithmic",ticks:{callback:function(v){return v+"ms"}},grid:{color:"#21262d"}},y:{beginAtZero:true,grid:{color:"#21262d"}}}}});');
 
   // c5 - Calls Over Time (line)
   H.push('new Chart(c5.getContext("2d"),{type:"line",data:{labels:' + HH + ',datasets:[{label:"Calls/hr",data:' + HC + ',borderColor:"#58a6ff",backgroundColor:"rgba(88,166,255,0.1)",fill:true,tension:0.3,pointRadius:2,pointHitRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:"#21262d"}},x:{grid:{color:"#21262d"}}}}});');
