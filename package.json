@@ -6,7 +6,8 @@
   "main": "index.js",
   "bin": {
     "tool-profiler": "./cli.js",
-    "tool-report": "./report.cjs"
+    "tool-report": "./report.cjs",
+    "tool-visualize": "./visualize.cjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.10.0"
