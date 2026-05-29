@@ -3,5 +3,8 @@
   "version": "2.1.0",
   "description": "OpenCode plugin that profiles tool calls - tracks duration, frequency, size, and errors",
   "type": "module",
-  "main": "index.js"
+  "main": "index.js",
+  "bin": {
+    "tool-profiler": "./cli.js"
+  }
 }
