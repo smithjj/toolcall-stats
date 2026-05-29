@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-const METRICS_DIR = path.join(os.homedir(), ".config", "input-token-counter");
+const METRICS_DIR = path.join(os.homedir(), ".config", "toolcall-stats");
 const SUMMARY_FILE = path.join(METRICS_DIR, "summary.json");
 const METRICS_FILE = path.join(METRICS_DIR, "metrics.jsonl");
 

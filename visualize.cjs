@@ -1,9 +1,10 @@
+#!/usr/bin/env node
 var Database = require('better-sqlite3');
 var fs = require('node:fs');
 var path = require('node:path');
 var os = require('node:os');
 
-var DIR = path.join(os.homedir(), '.config', 'input-token-counter');
+var DIR = path.join(os.homedir(), '.config', 'toolcall-stats');
 var DB_PATH = path.join(DIR, 'report.db');
 var OUT_PATH = path.join(DIR, 'report.html');
 

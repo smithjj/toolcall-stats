@@ -1,6 +1,6 @@
-# Input Token Counter / Tool Call Profiler
+﻿# Input Token Counter / Tool Call Profiler
 
-An OpenCode plugin that profiles tool calls — tracking duration, frequency, argument/result sizes, and error rates.
+An OpenCode plugin that profiles tool calls â€” tracking duration, frequency, argument/result sizes, and error rates.
 
 ## Features
 
@@ -15,18 +15,18 @@ An OpenCode plugin that profiles tool calls — tracking duration, frequency, ar
 
 The plugin hooks into OpenCode's supported hooks:
 
-- `tool.execute.before` — captures start time, tool name, and arguments
-- `tool.execute.after` — computes duration, result size, error status, appends to metrics
+- `tool.execute.before` â€” captures start time, tool name, and arguments
+- `tool.execute.after` â€” computes duration, result size, error status, appends to metrics
 
-Data is stored in `~/.config/input-token-counter/`:
-- `metrics.jsonl` — one JSON entry per tool call
-- `summary.json` — aggregated stats
+Data is stored in `~/.config/toolcall-stats/`:
+- `metrics.jsonl` â€” one JSON entry per tool call
+- `summary.json` â€” aggregated stats
 
 ## Installation
 
 Place in your OpenCode plugins directory:
 ```
-~/.config/opencode/plugins/input-token-counter/
+~/.config/opencode/plugins/toolcall-stats/
 ```
 
 No npm dependencies required.
@@ -36,19 +36,19 @@ No npm dependencies required.
 ### CLI
 
 ```bash
-node ~/.config/opencode/plugins/input-token-counter/cli.js
+node ~/.config/opencode/plugins/toolcall-stats/cli.js
 ```
 
 Options:
-- `--recent` / `-n` — show summary plus last 10 calls
-- `--json` / `-j` — output raw summary JSON
-- `--reset` — clear all data
+- `--recent` / `-n` â€” show summary plus last 10 calls
+- `--json` / `-j` â€” output raw summary JSON
+- `--reset` â€” clear all data
 
 ### Example Output
 
 ```
 ----------------------------------------------------------------------
-              Tool Call Profiler — Summary
+              Tool Call Profiler â€” Summary
 ----------------------------------------------------------------------
   Tool calls:         1,247
   Errors:             23 (1.8%)
@@ -100,8 +100,8 @@ Options:
 
 ```bash
 # Longest-running tool calls
-cat ~/.config/input-token-counter/metrics.jsonl | jq -s 'sort_by(-.duration) | .[0:5]'
+cat ~/.config/toolcall-stats/metrics.jsonl | jq -s 'sort_by(-.duration) | .[0:5]'
 
 # Error rate by tool
-cat ~/.config/input-token-counter/metrics.jsonl | jq -s 'group_by(.tool) | map({tool: .[0].tool, errors: map(select(.error)) | length, calls: length}) | sort_by(-.errors)'
+cat ~/.config/toolcall-stats/metrics.jsonl | jq -s 'group_by(.tool) | map({tool: .[0].tool, errors: map(select(.error)) | length, calls: length}) | sort_by(-.errors)'
 ```

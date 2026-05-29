@@ -1,9 +1,9 @@
-import fs from "node:fs";
+﻿import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import Database from "better-sqlite3";
 
-const DIR = path.join(os.homedir(), ".config", "input-token-counter");
+const DIR = path.join(os.homedir(), ".config", "toolcall-stats");
 const SUMMARY = path.join(DIR, "summary.json");
 const METRICS = path.join(DIR, "metrics.jsonl");
 const DB_PATH = path.join(DIR, "report.db");
