@@ -68,6 +68,99 @@ function printSummary() {
   }
 }
 
+function loadMetrics() {
+  if (!fs.existsSync(METRICS_FILE)) return [];
+  return fs.readFileSync(METRICS_FILE, "utf-8").trim().split("\n").filter(Boolean).map(function (l) { return JSON.parse(l); });
+}
+
+function median(sorted) {
+  if (!sorted.length) return 0;
+  var mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function percentile(sorted, p) {
+  if (!sorted.length) return 0;
+  var idx = Math.ceil(sorted.length * p) - 1;
+  return sorted[Math.max(0, Math.min(idx, sorted.length - 1))];
+}
+
+function stddev(values, mean) {
+  if (values.length < 2) return 0;
+  var variance = 0;
+  for (var v = 0; v < values.length; v++) {
+    variance += (values[v] - mean) * (values[v] - mean);
+  }
+  variance /= (values.length - 1);
+  return Math.sqrt(variance);
+}
+
+function printStats() {
+  var metrics = loadMetrics();
+  if (!metrics.length) {
+    console.log("No metrics data yet.");
+    return;
+  }
+
+  var durations = metrics.map(function (m) { return m.duration; }).sort(function (a, b) { return a - b; });
+  var mean = 0;
+  for (var i = 0; i < durations.length; i++) { mean += durations[i]; }
+  mean /= durations.length;
+
+  console.log(hr());
+  console.log("              Tool Call Profiler -- Advanced Stats (" + formatNumber(metrics.length) + " calls)");
+  console.log(hr());
+  console.log("  Duration distribution:");
+  console.log("    Longest:            " + formatDuration(durations[durations.length - 1]));
+  console.log("    99th percentile:    " + formatDuration(percentile(durations, 0.99)));
+  console.log("    95th percentile:    " + formatDuration(percentile(durations, 0.95)));
+  console.log("    75th percentile:    " + formatDuration(percentile(durations, 0.75)));
+  console.log("    Median (50th):      " + formatDuration(median(durations)));
+  console.log("    25th percentile:    " + formatDuration(percentile(durations, 0.25)));
+  console.log("    Mean:               " + formatDuration(mean));
+  console.log("    Std deviation:      " + formatDuration(stddev(durations, mean)));
+  console.log("    Shortest:           " + formatDuration(durations[0]));
+  console.log(hr());
+
+  var byTool = {};
+  for (var i = 0; i < metrics.length; i++) {
+    var m = metrics[i];
+    if (!byTool[m.tool]) byTool[m.tool] = [];
+    byTool[m.tool].push(m.duration);
+  }
+
+  var toolNames = Object.keys(byTool).sort(function (a, b) { return byTool[b].length - byTool[a].length; });
+  if (toolNames.length) {
+    console.log("");
+    console.log("  Per-tool duration breakdown:");
+    console.log("  Tool                 Calls     Mean        Median      P95       Longest");
+    console.log("  ----                 -----     ----        ------      ---       -------");
+    for (var i = 0; i < toolNames.length; i++) {
+      var t = toolNames[i];
+      var d = byTool[t].sort(function (a, b) { return a - b; });
+      var tmean = 0;
+      for (var j = 0; j < d.length; j++) { tmean += d[j]; }
+      tmean /= d.length;
+      var name = t.length > 22 ? t.slice(0, 21) + "\u2026" : t;
+      console.log("  " + name.padEnd(23) + String(d.length).padStart(7) + "  " + formatDuration(tmean).padStart(8) + "  " + formatDuration(median(d)).padStart(8) + "  " + formatDuration(percentile(d, 0.95)).padStart(8) + "  " + formatDuration(d[d.length - 1]).padStart(8));
+    }
+    console.log(hr());
+  }
+
+  var slowest = metrics.slice().sort(function (a, b) { return b.duration - a.duration; }).slice(0, 10);
+  console.log("");
+  console.log("  Top 10 slowest calls:");
+  console.log("  #    Time                 Tool                   Duration");
+  console.log("  ---  ----                 ----                   --------");
+  for (var i = 0; i < slowest.length; i++) {
+    var e = slowest[i];
+    var ts = e.ts.replace("T", " ").split(".")[0];
+    var name = e.tool.length > 22 ? e.tool.slice(0, 21) + "\u2026" : e.tool;
+    console.log("  " + String(i + 1).padStart(2) + "   " + ts.padEnd(21) + " " + name.padEnd(23) + formatDuration(e.duration).padStart(8));
+  }
+  console.log();
+}
+
 function printRecent(n) {
   if (!fs.existsSync(METRICS_FILE)) {
     console.log("No metrics data yet.");
@@ -123,10 +216,14 @@ if (cmd === "--reset" || cmd === "-r") {
   } catch (e) {
     console.log(JSON.stringify({ error: "No data yet" }));
   }
+} else if (cmd === "--stats" || cmd === "-s") {
+  printSummary();
+  printStats();
 } else if (cmd === "--help" || cmd === "-h") {
   console.log("Usage: tool-profiler [options]");
   console.log("  (no args)      Show summary table");
   console.log("  --recent, -n   Show summary + recent calls");
+  console.log("  --stats, -s    Show summary + advanced stats (percentiles, median, stddev, slowest)");
   console.log("  --json, -j     Show raw JSON summary");
   console.log("  --reset        Reset all statistics");
   console.log("  --help, -h     Show this help");
