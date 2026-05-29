@@ -1,7 +1,7 @@
 {
   "name": "toolcall-stats",
   "version": "3.0.0",
-  "description": "OpenCode plugin that profiles tool calls - tracks duration, frequency, errors, and visualizes stats",
+  "description": "OpenCode plugin that profiles tool calls — tracks duration, frequency, errors, and visualizes stats with Chart.js",
   "type": "module",
   "main": "index.js",
   "bin": {
@@ -9,6 +9,13 @@
     "tc-report": "./report.cjs",
     "tc-viz": "./visualize.cjs"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smithjj/toolcall-stats.git"
+  },
+  "homepage": "https://github.com/smithjj/toolcall-stats",
+  "keywords": ["opencode", "plugin", "tool", "profiler", "dashboard"],
+  "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^12.10.0",
     "playwright": "^1.60.0"
