@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 var Database = require("better-sqlite3");
 var path = require("node:path");
 var os = require("node:os");
