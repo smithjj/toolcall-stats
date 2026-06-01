@@ -60,7 +60,7 @@ function record(entry) {
   try {
     getDb();
     sqlInsert.run({ ts: entry.ts, tool: entry.tool, dur: entry.duration || 0, ac: entry.argsChars || 0, rc: entry.resultChars || 0, err: entry.error ? 1 : 0, batch: new Date().toISOString().slice(0, 13) });
-  } catch (_) {}
+  } catch (e) { try { fs.appendFileSync(path.join(DIR, "errors.log"), new Date().toISOString() + " DB write: " + e.message + "\n"); } catch(_) {} }
 }
 
 export default async function(_opts) {
